@@ -1,0 +1,20 @@
+# Stage 1
+FROM rust as build-step-rust
+RUN mkdir -p /app
+WORKDIR /app
+COPY butler_online_api /app
+RUN cargo build --release --bin api
+RUN ls -la /app/target/release
+
+
+# Assembly
+FROM debian:stable-slim
+
+RUN mkdir /app
+RUN apt-get update && apt-get install libmariadb-dev openssl ca-certificates curl --yes && apt-get clean
+COPY --from=build-step-rust /app/target/release/api /app/api
+WORKDIR /app
+EXPOSE 8080
+
+HEALTHCHECK --interval=12s --timeout=12s --start-period=10s CMD curl localhost:8080/health --fail
+ENTRYPOINT ["./api"]
